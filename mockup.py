@@ -37,7 +37,7 @@ class Ui_MainWindow(object):
         self.word_label.setFont(font)
         self.word_label.setObjectName("word_label")
         self.search_bar = QtWidgets.QLineEdit(self.centralwidget)
-        self.search_bar.setGeometry(QtCore.QRect(10, 10, 371, 20))
+        self.search_bar.setGeometry(QtCore.QRect(10, 10, 230, 25))
         self.search_bar.setObjectName("search_bar")
         self.meanings_label = QtWidgets.QLabel(self.centralwidget)
         self.meanings_label.setGeometry(QtCore.QRect(10, 190, 101, 21))
@@ -64,8 +64,9 @@ class Ui_MainWindow(object):
         self.pronouns_button.setAutoRepeatInterval(50)
         self.pronouns_button.setObjectName("pronouns_button")
         self.search_button = QtWidgets.QPushButton(self.centralwidget)
-        self.search_button.setGeometry(QtCore.QRect(390, 10, 75, 23))
+        self.search_button.setGeometry(QtCore.QRect(380, 10, 70, 25))
         self.search_button.setObjectName("search_button")
+        self.search_button.setFont(font)
         self.meanings_content = QtWidgets.QPlainTextEdit(self.centralwidget)
         self.meanings_content.setFont(font)
         self.meanings_content.setGeometry(QtCore.QRect(130, 150, 321, 100))
@@ -80,7 +81,16 @@ class Ui_MainWindow(object):
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
 
+        self.dictionary = QtWidgets.QComboBox(self.centralwidget)
+
+        self.dictionary.setFont(font)
+        self.dictionary.setGeometry(QtCore.QRect(250, 10, 120, 25))
+        self.dictionary.setObjectName("dictionary")
+        self.dictionary.setCurrentIndex(1)
+        self.dictionary.addItem("Cambridge")
+        self.dictionary.addItem("Oxford")
         self.retranslateUi(MainWindow)
+
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
         self.setUp()
@@ -100,12 +110,19 @@ class Ui_MainWindow(object):
         self.word_label.setText(_translate("MainWindow", "Word"))
         self.meanings_label.setText(_translate("MainWindow", "Meanings"))
         self.pronunciation_label.setText(_translate("MainWindow", "Pronunciation"))
-    
+
+    def reset_view(self):
+        self.meanings_content.setPlainText("")
+        self.vocabulary = Vocabulary('', '', '', '')
+        self.meanings_content.setPlainText("")
+        self.pronouns_button.setText("")
+
     def search(self):
         client = DictionaryRestClient("http://localhost:8082/api/vocabulary/")
-        word = client.get(self.search_bar.text())
+        word = client.get(self.dictionary.currentText().upper(), self.search_bar.text())
 
         if word is None:
+            self.reset_view()
             self.word_content.setText("NOT FOUND")
             return
 
@@ -113,11 +130,12 @@ class Ui_MainWindow(object):
         self.word_content.setText(word['word'] + vocabulary_class)
         pronunciation = word['pronunciation']
 
-        first_pronunciation = list(pronunciation)[0]
+        first_pronunciation = list(pronunciation)[0] if list(pronunciation).__len__() >= 1 else None
         self.pronouns_button.setText(first_pronunciation)
         meanings = word['meanings']
         self.meanings_content.setPlainText(self.get_meanings(meanings))
-        self.vocabulary = Vocabulary(word['word'], first_pronunciation, pronunciation[first_pronunciation][1], meanings)
+        prouncation_path = pronunciation[first_pronunciation][1] if first_pronunciation is not None and pronunciation[first_pronunciation] is not None else ""
+        self.vocabulary = Vocabulary(word['word'], first_pronunciation, prouncation_path, meanings)
 
     def get_meanings(self, meanings):
         meanings_as_string = ''
@@ -132,6 +150,8 @@ class Ui_MainWindow(object):
 
     def play_audio(self, error, url):
         try:
+            if(url == ""):
+                return
             p = vlc.MediaPlayer(url)
             p.play()
         except:
